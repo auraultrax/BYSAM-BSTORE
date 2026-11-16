@@ -3,12 +3,12 @@
 Beray geliştirici portalı ve yayın yönetimi.
 - index.html: BYSAM Domain ve BSTORE uygulama başvurusu seçimi.
 - admin.html: e-posta/şifre girişli yönetici paneli.
-- portal.js: Auth, ilk başvuru ve yalnızca sürüm/kod güncellemesi.
+- portal.js: Auth, ilk başvuru ve yalnızca sürüm/kod güncellemesi; gönderim türü, uzantı, dosya boyutu ve dosya adı kontrolleri.
 - admin.js: dosyaları inceleme, reddetme, yayımlama, kaynak dosyalarını düzenleme ve yayın silme.
 
 ## Dosya sınırları
 - En az 1, en fazla 7 kaynak kod dosyası.
-- En fazla 4 ek dosya (görsel/PDF/ZIP).
+- En fazla 4 ek dosya (PNG/JPG/WebP/PDF; ZIP ek dosyası değildir).
 - Dosya başına 25 MB.
 - Kaynak dosyaları arasında index.html veya index.html içeren ZIP paketi.
 - ZIP çıkarma işleminde 120 dosya sınırı ve yol geçişi kontrolü bulunur.
