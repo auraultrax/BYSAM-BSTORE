@@ -5,12 +5,13 @@
  const say=(id,msg)=>{const e=$(id);if(e)e.textContent=msg;};
  const show=id=>$(id).classList.remove('hidden'),hide=id=>$(id).classList.add('hidden');
  const safeName=n=>n.normalize('NFKD').replace(/[^a-zA-Z0-9._-]/g,'_').replace(/^\.+/,'').slice(0,120)||'file';
+ function fileMime(name,fallback){const ext=String(name).toLowerCase().split('.').pop();const known={html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',mjs:'application/javascript',jsx:'application/javascript',ts:'application/javascript',tsx:'application/javascript',json:'application/json',txt:'text/plain',md:'text/plain',xml:'application/xml',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',pdf:'application/pdf',zip:'application/zip'};return known[ext]||fallback||'application/octet-stream';}
  function validateFiles(files,min,max,label){if(files.length<min||files.length>max)throw new Error(label+' sayısı '+min+'–'+max+' arasında olmalı.');for(const f of files)if(f.size>maxBytes)throw new Error(f.name+' dosyası 25 MB sınırını aşıyor.');}
  async function uploadFiles(files,uid,recordId,folder){
    const rows=[];
    for(let i=0;i<files.length;i++){
      const f=files[i],name=String(i+1).padStart(2,'0')+'_'+safeName(f.name),path=uid+'/'+recordId+'/'+folder+'/'+name;
-     const {error}=await sb.storage.from(bucket).upload(path,f,{upsert:false,contentType:f.type||'application/octet-stream'});
+     const {error}=await sb.storage.from(bucket).upload(path,f,{upsert:false,contentType:fileMime(f.name,f.type)});
      if(error)throw new Error(f.name+' yüklenemedi: '+error.message);
      rows.push({name:f.name,path,size:f.size,type:f.type||'application/octet-stream'});
    }
