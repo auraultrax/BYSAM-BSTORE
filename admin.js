@@ -58,6 +58,21 @@
    const approve=add(actions,'button','btn','Onayla ve yayımla');approve.onclick=async()=>{setBusy(approve,true);try{await publishSubmission(row,note.value);await loadData();d.classList.add('hidden');}catch(e){alert('Yayımlama başarısız: '+e.message);}finally{setBusy(approve,false);}};
    const reject=add(actions,'button','btn danger','Reddet');reject.onclick=async()=>{if(!note.value.trim()){alert('Ret nedeni yazmalısın.');return;}setBusy(reject,true);try{const {error}=await sb.from('beray_submissions').update({status:'rejected',admin_note:note.value.trim(),updated_at:new Date().toISOString()}).eq('id',row.id);if(error)throw error;await sendMessage(row,'Başvurun reddedildi',note.value.trim());await loadData();d.classList.add('hidden');}catch(e){alert(e.message);}finally{setBusy(reject,false);}};
    const open=add(actions,'button','btn secondary','Yayın varsa aç');open.onclick=()=>{const p=publications.find(x=>x.submission_id===row.id);if(p?.public_base_url)window.open(p.public_base_url,'_blank','noopener');else alert('Henüz yayımlanmamış.');};
+   const del=add(actions,'button','btn danger','Başvuruyu tamamen sil');
+   del.onclick=async()=>{
+     if(!confirm('Başvuru, tüm revizyonları ve yüklenen kaynak dosyaları kalıcı olarak silinsin mi?'))return;
+     setBusy(del,true);
+     try{
+       const privatePaths=[...(row.source_files||[]),...(row.attachment_files||[])].map(file=>file.path);
+       revisions.filter(revision=>revision.submission_id===row.id).forEach(revision=>privatePaths.push(...[...(revision.source_files||[]),...(revision.attachment_files||[])].map(file=>file.path)));
+       if(privatePaths.length){const {error}=await sb.storage.from('beray-submissions').remove(privatePaths);if(error)throw error;}
+       const pub=publications.find(item=>item.submission_id===row.id);
+       if(pub){const paths=(pub.files||[]).map(file=>file.path);if(paths.length){const {error}=await sb.storage.from('beray-published').remove(paths);if(error)throw error;}}
+       const {error}=await sb.from('beray_submissions').delete().eq('id',row.id);if(error)throw error;
+       await loadData();d.classList.add('hidden');
+     }catch(error){alert('Başvuru silinemedi: '+error.message);}
+     finally{setBusy(del,false);}
+   };
  }
  async function copyToPublished(fileRows,slug,kind,revisionId){
    const folder='published/'+kind+'/'+safeSlug(slug)+(revisionId?'/'+revisionId:'');
