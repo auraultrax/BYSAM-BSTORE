@@ -131,12 +131,59 @@
    const slug=add(d,'input');slug.value=pub.slug;slug.placeholder='Alan adı / kimlik';
    const version=add(d,'input');version.value=pub.version;version.placeholder='Sürüm';
    const description=add(d,'textarea');description.value=row?.description||'';description.placeholder='Açıklama';
-   const save=add(d,'button','btn','Genel bilgileri kaydet');save.onclick=async()=>{const {error}=await sb.from('beray_publications').update({project_name:name.value.trim(),slug:safeSlug(slug.value),version:version.value.trim(),updated_at:new Date().toISOString()}).eq('id',pub.id);if(error){alert(error.message);return;}if(row){const {error:e}=await sb.from('beray_submissions').update({project_name:name.value.trim(),slug:safeSlug(slug.value),version:version.value.trim(),description:description.value,updated_at:new Date().toISOString()}).eq('id',row.id);if(e){alert(e.message);return;}}await loadData();alert('Yayın bilgileri güncellendi.');};
-   add(d,'h3',null,'Yayınlanan index.html içeriğini düzenle');const html=add(d,'textarea');html.style.minHeight='280px';html.placeholder='Yükleniyor…';
-   try{const response=await fetch(pub.public_base_url,{cache:'no-store'});if(!response.ok)throw new Error('HTML indirilemedi');html.value=await response.text();}catch(e){html.value='İçerik okunamadı: '+e.message;}
-   const saveHtml=add(d,'button','btn','HTML içeriğini kaydet');saveHtml.onclick=async()=>{const entry=(pub.files||[]).find(f=>f.name.toLowerCase()==='index.html');if(!entry){alert('Yayın dosyası kaydı bulunamadı.');return;}const blob=new Blob([html.value],{type:'text/html;charset=utf-8'});const {error}=await sb.storage.from('beray-published').upload(entry.path,blob,{upsert:true,contentType:'text/html'});if(error){alert(error.message);return;}alert('HTML güncellendi.');};
-   const toggle=add(d,'button',pub.is_active?'btn secondary':'btn',pub.is_active?'Yayını devre dışı bırak':'Yayını yeniden aç');toggle.onclick=async()=>{const {error}=await sb.from('beray_publications').update({is_active:!pub.is_active,updated_at:new Date().toISOString()}).eq('id',pub.id);if(error){alert(error.message);return;}await loadData();d.classList.add('hidden');};
-   const del=add(d,'button','btn danger','Yayını ve başvuruyu sil');del.onclick=async()=>{if(!confirm('Bu yayın ve bağlı başvuru kalıcı olarak silinsin mi?'))return;const paths=(pub.files||[]).map(f=>f.path);if(paths.length){const {error}=await sb.storage.from('beray-published').remove(paths);if(error){alert(error.message);return;}}const {error}=await sb.from('beray_submissions').delete().eq('id',pub.submission_id);if(error){alert(error.message);return;}await loadData();d.classList.add('hidden');};
+   const save=add(d,'button','btn','Genel bilgileri kaydet');save.onclick=async()=>{
+     const newName=name.value.trim(),newSlug=slug.value.trim(),newVersion=version.value.trim();
+     const {error}=await sb.from('beray_publications').update({project_name:newName,slug:newSlug,version:newVersion,updated_at:new Date().toISOString()}).eq('id',pub.id);
+     if(error){alert(error.message);return;}
+     if(row){const {error:e}=await sb.from('beray_submissions').update({project_name:newName,slug:newSlug,version:newVersion,description:description.value,updated_at:new Date().toISOString()}).eq('id',row.id);if(e){alert(e.message);return;}}
+     await loadData();alert('Yayın bilgileri güncellendi.');
+   };
+   add(d,'h3',null,'Kaynak dosyalarını düzenle');
+   const codeFiles=(pub.files||[]).filter(file=>/\.(html?|css|js|mjs|json|txt|xml|svg|md|ts|tsx|jsx)$/i.test(file.name));
+   const select=add(d,'select');
+   codeFiles.forEach(file=>{const option=document.createElement('option');option.value=file.path;option.textContent=file.name;select.appendChild(option);});
+   const editor=add(d,'textarea');editor.style.minHeight='300px';editor.placeholder='Dosya içeriği seçilince yüklenecek…';
+   const fileStatus=add(d,'p','muted','');
+   async function loadEditor(){
+     const file=codeFiles.find(x=>x.path===select.value);if(!file)return;
+     editor.value='Yükleniyor…';fileStatus.textContent=file.name;
+     try{
+       const url=SUPA+'/storage/v1/object/public/beray-published/'+file.path.split('/').map(encodeURIComponent).join('/');
+       const response=await fetch(url,{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);
+       editor.value=await response.text();
+     }catch(e){editor.value='Dosya yüklenemedi: '+e.message;}
+   }
+   select.onchange=loadEditor;
+   if(codeFiles.length)await loadEditor();else editor.value='Düzenlenebilir kaynak dosyası bulunamadı.';
+   const saveCode=add(d,'button','btn','Seçili dosyayı kaydet');
+   saveCode.onclick=async()=>{
+     const file=codeFiles.find(x=>x.path===select.value);if(!file)return;
+     setBusy(saveCode,true);
+     try{
+       const blob=new Blob([editor.value],{type:mimeFor(file.name)+';charset=utf-8'});
+       const {error}=await sb.storage.from('beray-published').upload(file.path,blob,{upsert:true,contentType:mimeFor(file.name),cacheControl:'0'});
+       if(error)throw error;
+       alert(file.name+' güncellendi.');
+     }catch(e){alert('Dosya kaydedilemedi: '+e.message);}finally{setBusy(saveCode,false);}
+   };
+   const toggle=add(d,'button',pub.is_active?'btn secondary':'btn',pub.is_active?'Yayını devre dışı bırak':'Yayını yeniden aç');
+   toggle.onclick=async()=>{const {error}=await sb.from('beray_publications').update({is_active:!pub.is_active,updated_at:new Date().toISOString()}).eq('id',pub.id);if(error){alert(error.message);return;}await loadData();d.classList.add('hidden');};
+   const del=add(d,'button','btn danger','Yayını ve başvuruyu sil');
+   del.onclick=async()=>{
+     if(!confirm('Bu yayın, bağlı başvuru, sürüm dosyaları ve tüm depolanmış kod dosyaları kalıcı olarak silinsin mi?'))return;
+     try{
+       const publishedPaths=(pub.files||[]).map(file=>file.path);
+       if(publishedPaths.length){const {error}=await sb.storage.from('beray-published').remove(publishedPaths);if(error)throw error;}
+       if(row){
+         const privatePaths=[...(row.source_files||[]),...(row.attachment_files||[])].map(file=>file.path);
+         const relatedRevisions=revisions.filter(revision=>revision.submission_id===row.id);
+         relatedRevisions.forEach(revision=>privatePaths.push(...[...(revision.source_files||[]),...(revision.attachment_files||[])].map(file=>file.path)));
+         if(privatePaths.length){const {error}=await sb.storage.from('beray-submissions').remove(privatePaths);if(error)throw error;}
+       }
+       const {error}=await sb.from('beray_submissions').delete().eq('id',pub.submission_id);if(error)throw error;
+       await loadData();d.classList.add('hidden');
+     }catch(e){alert('Silme başarısız: '+e.message);}
+   };
  }
  checkUser();
 })();
