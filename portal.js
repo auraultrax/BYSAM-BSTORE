@@ -7,6 +7,14 @@
  const safeName=n=>n.normalize('NFKD').replace(/[^a-zA-Z0-9._-]/g,'_').replace(/^\.+/,'').slice(0,120)||'file';
  function fileMime(name,fallback){const ext=String(name).toLowerCase().split('.').pop();const known={html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',mjs:'application/javascript',jsx:'application/javascript',ts:'application/javascript',tsx:'application/javascript',json:'application/json',txt:'text/plain',md:'text/plain',xml:'application/xml',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',pdf:'application/pdf',zip:'application/zip'};return known[ext]||fallback||'application/octet-stream';}
  function validateFiles(files,min,max,label){if(files.length<min||files.length>max)throw new Error(label+' sayısı '+min+'–'+max+' arasında olmalı.');for(const f of files)if(f.size>maxBytes)throw new Error(f.name+' dosyası 25 MB sınırını aşıyor.');}
+ function validateFileKinds(source,attachments){
+   const code=/\.(html?|js|mjs|css|json|txt|xml|svg|ts|tsx|jsx|md|zip)$/i;
+   const asset=/\.(png|jpe?g|webp|pdf)$/i;
+   for(const file of source)if(!code.test(file.name))throw new Error(file.name+' desteklenen bir kod dosyası değil.');
+   for(const file of attachments)if(!asset.test(file.name))throw new Error(file.name+' ek dosyası yalnızca PNG, JPG, WebP veya PDF olabilir.');
+   const names=[...source,...attachments].map(file=>file.name.trim().toLowerCase());
+   if(new Set(names).size!==names.length)throw new Error('Kod ve ek dosyalarının adları birbirinden farklı olmalı.');
+ }
  async function uploadFiles(files,uid,recordId,folder){
    const rows=[];
    for(let i=0;i<files.length;i++){
@@ -62,7 +70,7 @@
    e.preventDefault();if(!currentUser){say('#applyMessage','Önce giriş yap.');return;}
    const source=[...$('#sourceFiles').files],attachments=[...$('#attachmentFiles').files];
    try{
-     validateFiles(source,1,7,'Kod dosyası');validateFiles(attachments,0,4,'Ek dosya');
+     validateFiles(source,1,7,'Kod dosyası');validateFiles(attachments,0,4,'Ek dosya');validateFileKinds(source,attachments);
      if(!source.some(f=>f.name.toLowerCase()==='index.html')&&!source.some(f=>f.name.toLowerCase().endsWith('.zip')))throw new Error('Kod dosyalarının arasında index.html bulunmalı veya index.html içeren bir ZIP paketi yüklemelisin.');
      const slugRaw=$('#slug').value.trim().toLowerCase();
      if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugRaw))throw new Error('Kimlik yalnızca küçük İngilizce harf, rakam ve tire içerebilir.');
@@ -87,7 +95,7 @@
    e.preventDefault();if(!currentUser||!revisionTarget)return;
    const src=[...$('#revisionSources').files],att=[...$('#revisionAttachments').files];
    try{
-     validateFiles(src,1,7,'Kod dosyası');validateFiles(att,0,4,'Ek dosya');
+     validateFiles(src,1,7,'Kod dosyası');validateFiles(att,0,4,'Ek dosya');validateFileKinds(src,att);
      if(!src.some(f=>f.name.toLowerCase()==='index.html')&&!src.some(f=>f.name.toLowerCase().endsWith('.zip')))throw new Error('Yeni sürümde index.html veya index.html içeren ZIP paketi zorunludur.');
      const version=$('#revisionVersion').value.trim();if(!version)throw new Error('Sürüm numarası gerekli.');
      $('#sendRevision').disabled=true;say('#revisionMessage','Yeni sürüm yükleniyor…');
