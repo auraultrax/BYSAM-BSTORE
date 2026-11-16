@@ -61,18 +61,44 @@
  }
  async function copyToPublished(fileRows,slug,kind,revisionId){
    const folder='published/'+kind+'/'+safeSlug(slug)+(revisionId?'/'+revisionId:'');
-   const output=[];
+   const entries=[];
    for(const f of fileRows||[]){
      const {data,error}=await sb.storage.from('beray-submissions').download(f.path);if(error)throw error;
-     const path=folder+'/'+safeSlug(f.name.replaceAll(' ','_'));
-     const {error:upError}=await sb.storage.from('beray-published').upload(path,data,{upsert:true,contentType:f.type||'application/octet-stream',cacheControl:'60'});
-     if(upError)throw upError;
-     output.push({name:f.name,path,size:f.size||data.size,type:f.type||'application/octet-stream'});
+     if(f.name.toLowerCase().endsWith('.zip')){
+       if(!window.JSZip)throw new Error('ZIP çözücü yüklenemedi.');
+       const archive=await window.JSZip.loadAsync(data);
+       const names=Object.keys(archive.files).filter(n=>!archive.files[n].dir);
+       if(names.length>120)throw new Error('ZIP paketi 120 dosya sınırını aşıyor.');
+       if(names.some(n=>n.startsWith('/')||n.split('/').includes('..')))throw new Error('ZIP içinde güvenli olmayan dosya yolu bulundu.');
+       const indexPath=names.find(n=>n.toLowerCase()==='index.html')||names.find(n=>n.toLowerCase().endsWith('/index.html'));
+       const root=indexPath&&indexPath.includes('/')?indexPath.slice(0,indexPath.toLowerCase().lastIndexOf('index.html')):'';
+       for(const name of names){
+         const relative=name.startsWith(root)?name.slice(root.length):name;
+         if(!relative||relative.toLowerCase()==='index.html')continue;
+         const blob=await archive.file(name).async('blob');
+         if(blob.size>25*1024*1024)throw new Error(name+' dosyası 25 MB sınırını aşıyor.');
+         entries.push({name:relative,blob,type:blob.type||mimeFor(relative),size:blob.size});
+       }
+     }else entries.push({name:f.name,blob:data,type:f.type||'application/octet-stream',size:f.size||data.size});
+   }
+   const output=[];
+   for(const item of entries){
+     const parts=item.name.split('/').filter(Boolean).map(safeSlug);
+     if(!parts.length||parts.some(x=>!x||x==='..'))continue;
+     const relative=parts.join('/');
+     const path=folder+'/'+relative;
+     const {error}=await sb.storage.from('beray-published').upload(path,item.blob,{upsert:true,contentType:item.type||mimeFor(relative),cacheControl:'60'});
+     if(error)throw error;
+     output.push({name:relative,path,size:item.size,type:item.type||mimeFor(relative)});
    }
    const entry=output.find(f=>f.name.toLowerCase()==='index.html');
-   if(!entry)throw new Error('Yayın paketinde index.html bulunamadı.');
+   if(!entry)throw new Error('Yayın paketinde kök dizinde index.html bulunamadı. ZIP kökünde veya seçilen dosyalar arasında index.html olmalı.');
    const publicUrl=SUPA+'/storage/v1/object/public/beray-published/'+entry.path.split('/').map(encodeURIComponent).join('/');
    return {files:output,publicUrl};
+ }
+ function mimeFor(name){
+   const ext=String(name).toLowerCase().split('.').pop();
+   return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',mjs:'application/javascript',json:'application/json',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',pdf:'application/pdf',txt:'text/plain',xml:'application/xml',wasm:'application/wasm'})[ext]||'application/octet-stream';
  }
  async function sendMessage(row,subject,body){
    const {error}=await sb.from('beray_messages').insert({owner_id:row.owner_id,submission_id:row.id,subject,body});
