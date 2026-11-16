@@ -74,7 +74,7 @@
        const root=indexPath&&indexPath.includes('/')?indexPath.slice(0,indexPath.toLowerCase().lastIndexOf('index.html')):'';
        for(const name of names){
          const relative=name.startsWith(root)?name.slice(root.length):name;
-         if(!relative||relative.toLowerCase()==='index.html')continue;
+         if(!relative)continue;
          const blob=await archive.file(name).async('blob');
          if(blob.size>25*1024*1024)throw new Error(name+' dosyası 25 MB sınırını aşıyor.');
          entries.push({name:relative,blob,type:blob.type||mimeFor(relative),size:blob.size});
