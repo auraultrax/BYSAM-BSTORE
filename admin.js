@@ -72,11 +72,13 @@
        if(names.some(n=>n.startsWith('/')||n.split('/').includes('..')))throw new Error('ZIP içinde güvenli olmayan dosya yolu bulundu.');
        const indexPath=names.find(n=>n.toLowerCase()==='index.html')||names.find(n=>n.toLowerCase().endsWith('/index.html'));
        const root=indexPath&&indexPath.includes('/')?indexPath.slice(0,indexPath.toLowerCase().lastIndexOf('index.html')):'';
+       let expandedBytes=0;
        for(const name of names){
          const relative=name.startsWith(root)?name.slice(root.length):name;
          if(!relative)continue;
          const blob=await archive.file(name).async('blob');
          if(blob.size>25*1024*1024)throw new Error(name+' dosyası 25 MB sınırını aşıyor.');
+         expandedBytes+=blob.size;if(expandedBytes>100*1024*1024)throw new Error('Açılmış ZIP toplamı 100 MB sınırını aşıyor.');
          entries.push({name:relative,blob,type:blob.type||mimeFor(relative),size:blob.size});
        }
      }else entries.push({name:f.name,blob:data,type:f.type||'application/octet-stream',size:f.size||data.size});
