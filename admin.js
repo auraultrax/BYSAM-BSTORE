@@ -115,7 +115,7 @@
  }
  function mimeFor(name){
    const ext=String(name).toLowerCase().split('.').pop();
-   return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',mjs:'application/javascript',json:'application/json',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',pdf:'application/pdf',txt:'text/plain',xml:'application/xml',wasm:'application/wasm'})[ext]||'application/octet-stream';
+   return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',mjs:'application/javascript',jsx:'application/javascript',ts:'application/javascript',tsx:'application/javascript',json:'application/json',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',pdf:'application/pdf',txt:'text/plain',md:'text/plain',xml:'application/xml',wasm:'application/wasm',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',eot:'application/vnd.ms-fontobject',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm'})[ext]||'application/octet-stream';
  }
  async function sendMessage(row,subject,body){
    const {error}=await sb.from('beray_messages').insert({owner_id:row.owner_id,submission_id:row.id,subject,body});
