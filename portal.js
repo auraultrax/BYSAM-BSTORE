@@ -62,7 +62,7 @@
    const source=[...$('#sourceFiles').files],attachments=[...$('#attachmentFiles').files];
    try{
      validateFiles(source,1,7,'Kod dosyası');validateFiles(attachments,0,4,'Ek dosya');
-     if(!source.some(f=>f.name.toLowerCase()==='index.html'))throw new Error('Kod dosyalarının arasında index.html bulunmalı.');
+     if(!source.some(f=>f.name.toLowerCase()==='index.html')&&!source.some(f=>f.name.toLowerCase().endsWith('.zip')))throw new Error('Kod dosyalarının arasında index.html bulunmalı veya index.html içeren bir ZIP paketi yüklemelisin.');
      const slugRaw=$('#slug').value.trim().toLowerCase();
      if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugRaw))throw new Error('Kimlik yalnızca küçük İngilizce harf, rakam ve tire içerebilir.');
      if(source.some(f=>f.name.includes('/')||f.name.includes('\\')))throw new Error('Dosya adında klasör yolu kullanma.');
@@ -87,7 +87,7 @@
    const src=[...$('#revisionSources').files],att=[...$('#revisionAttachments').files];
    try{
      validateFiles(src,1,7,'Kod dosyası');validateFiles(att,0,4,'Ek dosya');
-     if(!src.some(f=>f.name.toLowerCase()==='index.html'))throw new Error('Yeni sürümde index.html zorunludur.');
+     if(!src.some(f=>f.name.toLowerCase()==='index.html')&&!src.some(f=>f.name.toLowerCase().endsWith('.zip')))throw new Error('Yeni sürümde index.html veya index.html içeren ZIP paketi zorunludur.');
      const version=$('#revisionVersion').value.trim();if(!version)throw new Error('Sürüm numarası gerekli.');
      $('#sendRevision').disabled=true;say('#revisionMessage','Yeni sürüm yükleniyor…');
      const rid=crypto.randomUUID(),paths=[];
